@@ -17,7 +17,7 @@ os.getcwd()
 
 # Read Excel data
 df = pd.read_excel (r'./data/raw/Q4_2013_Groupon_North_America_Data_XLSX (1).xlsx', sheet_name='Q4 2013 Raw Data')
-# a =  pd.read_excel (r'./Groupon/Q4_2013_Groupon_North_America_Data_XLSX (1).xlsx', sheet_name='Historical Data')
+## 138534 obs, 7 vars
 df.head()
 
 # =============================================================================
@@ -67,6 +67,7 @@ categorical_vars = ['Start Date', 'Segment', 'Inventory Type']
 
 for col in list(df.columns.values):
     dataframe_description(df, col)
+## No mising value in all columns
 
 for col in list(continuous_vars):
     descriptive_stats_continuous(df, col)
@@ -84,34 +85,45 @@ local = df[(df.Segment=='Local')]
 goods = df[(df.Segment=='Goods')]
 travel = df[(df.Segment=='Travel')]
 
+
 local_ts = local[['Start Date','Billings']]
-
-# local_ts['Date'] = pd.to_datetime(local_ts['Start Date'])
-
 local_ts['Billings'].value_counts()
 local_ts['Billings'].isnull().sum()
+local_ts['Start Date'] = local_ts['Start Date'].astype(str)
 
-local_ts['Date'] = local_ts['Start Date']
+goods_ts = goods[['Start Date','Billings']]
+goods_ts['Billings'].value_counts()
+goods_ts['Billings'].isnull().sum()
+goods_ts['Start Date'] = goods_ts['Start Date'].astype(str)
 
-tim.split(' ', 1) 
+travel_ts = travel[['Start Date','Billings']]
+travel_ts['Billings'].value_counts()
+travel_ts['Billings'].isnull().sum()
+travel_ts['Start Date'] = travel_ts['Start Date'].astype(str)
 
+# =============================================================================
+# Aggreagation to day level using sum
+# =============================================================================
+local_ts_agg = local_ts.groupby(['Start Date'], as_index=True)['Billings'].sum()
+goods_ts_agg = goods_ts.groupby(['Start Date'], as_index=True)['Billings'].sum()
+travel_ts_agg = travel_ts.groupby(['Start Date'], as_index=True)['Billings'].sum()
 
-goods['Billings'].value_counts()
-goods['Billings'].value_counts()
 
 # =============================================================================
 # Some plots
 # =============================================================================
-local_ts.plot(figsize=(20,10), linewidth=5, fontsize=20)
-plt.xlabel('Year', fontsize=20)
+from matplotlib import pyplot
+local_ts_agg.plot()
+pyplot.show()
 
-descriptive_stats_continuous(local_ts, 'Billings')
+goods_ts_agg.plot()
+pyplot.show()
 
-x = local_ts['Start Date']
-y = local_ts['Billings']
-plt.plot(x, y, 'o', color='black');
+travel_ts_agg.plot()
+pyplot.show()
 
-    
-import plotly.express as px
-fig = px.line(local_ts, x='Start Date', y='Billings')
-fig.show()
+# =============================================================================
+# Imputation
+# =============================================================================
+
+
