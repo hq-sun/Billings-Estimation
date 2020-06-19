@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 os.getcwd()
 
 # Read Excel data
-df = pd.read_excel (r'./Groupon/Q4_2013_Groupon_North_America_Data_XLSX (1).xlsx', sheet_name='Q4 2013 Raw Data')
+df = pd.read_excel (r'./data/raw/Q4_2013_Groupon_North_America_Data_XLSX (1).xlsx', sheet_name='Q4 2013 Raw Data')
 # a =  pd.read_excel (r'./Groupon/Q4_2013_Groupon_North_America_Data_XLSX (1).xlsx', sheet_name='Historical Data')
 df.head()
 
@@ -83,3 +83,35 @@ for col in list(categorical_vars):
 local = df[(df.Segment=='Local')]
 goods = df[(df.Segment=='Goods')]
 travel = df[(df.Segment=='Travel')]
+
+local_ts = local[['Start Date','Billings']]
+
+# local_ts['Date'] = pd.to_datetime(local_ts['Start Date'])
+
+local_ts['Billings'].value_counts()
+local_ts['Billings'].isnull().sum()
+
+local_ts['Date'] = local_ts['Start Date']
+
+tim.split(' ', 1) 
+
+
+goods['Billings'].value_counts()
+goods['Billings'].value_counts()
+
+# =============================================================================
+# Some plots
+# =============================================================================
+local_ts.plot(figsize=(20,10), linewidth=5, fontsize=20)
+plt.xlabel('Year', fontsize=20)
+
+descriptive_stats_continuous(local_ts, 'Billings')
+
+x = local_ts['Start Date']
+y = local_ts['Billings']
+plt.plot(x, y, 'o', color='black');
+
+    
+import plotly.express as px
+fig = px.line(local_ts, x='Start Date', y='Billings')
+fig.show()
