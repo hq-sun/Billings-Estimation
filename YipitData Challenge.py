@@ -95,7 +95,6 @@ df['Inventory_TP'] = np.where(df['Inventory Type']=='Third - Party', 1, 0)
 df.drop(['Deal ID', 'Deal URL', 'Inventory Type'], axis = 1, inplace = True) 
 df.columns
 
-
 # Split the dataset by segments
 local = df[(df.Segment=='Local')]
 goods = df[(df.Segment=='Goods')]
@@ -105,7 +104,7 @@ travel = df[(df.Segment=='Travel')]
 local['Start Date'] = local['Start Date'].astype(str)
 local['Start Date'] = pd.to_datetime(local['Start Date'])
 local_agg = local.groupby(['Start Date'], as_index=True).agg({'Units Sold':'sum','Billings':'sum','Inventory_FP':'sum','Inventory_TP':'sum'})
-local_agg_sorted = local_agg.sort_index()
+
 
 
 goods['Start Date'] = goods['Start Date'].astype(str)
@@ -114,50 +113,45 @@ goods_agg = goods.groupby(['Start Date'], as_index=True).agg({'Units Sold':'sum'
 travel['Start Date'] = travel['Start Date'].astype(str)
 travel_agg = travel.groupby(['Start Date'], as_index=True).agg({'Units Sold':'sum','Billings':'sum','Inventory_FP':'sum','Inventory_TP':'sum'})
 
-# Create empty 11 days
-# local_temp = local_agg.copy()
-# local_temp = local.groupby(['Start Date'], as_index=True).agg({'Units Sold':'sum','Billings':'sum','Inventory_FP':'sum','Inventory_TP':'sum'})
-# local_temp = local_temp.append(pd.Series(name='2013-10-20'))
-# local_agg.append(pd.DataFrame(data, index=[last_date]))
 
+# Sort local aggregated dataframe
+local_agg_sorted = local_agg.sort_index()
 
-# local_agg = local_agg.append(pd.Series(name='2013-10-20'))
-# local_agg = local_agg.append(pd.Series(name='2013-10-21'))
-# local_agg = local_agg.append(pd.Series(name='2013-10-22'))
-# local_agg = local_agg.append(pd.Series(name='2013-10-23'))
-# local_agg = local_agg.append(pd.Series(name='2013-10-24'))
-# local_agg = local_agg.append(pd.Series(name='2013-10-25'))
-# local_agg = local_agg.append(pd.Series(name='2013-10-26'))
-# local_agg = local_agg.append(pd.Series(name='2013-10-27'))
-# local_agg = local_agg.append(pd.Series(name='2013-10-28'))
-# local_agg = local_agg.append(pd.Series(name='2013-10-29'))
-# local_agg = local_agg.append(pd.Series(name='2013-10-30'))
+# Split local dataframe to two - before 2013 and Year 2013
+local_2013 = local_agg_sorted.loc['2013-01-01':'2013-12-31'] ## 354 obs (missing 11 days)
+local_before_2013 = local_agg_sorted.loc[:'2012-12-31'] ## 150 obs
+
+# Add 11 rows represent missing 11 days
+local_2013_full = local_2013.asfreq(freq='1D')
+
+# Join two dataframes vertically
+local_agg_full_sorted = local_before_2013.append(local_2013_full) ## 515 obs
 
 
 # =============================================================================
 # Imputation
 # =============================================================================
+
 # Simple Imputer -- not so good b/c all missing days are imputed as same
 from sklearn.impute import SimpleImputer
-
-my_imputer = SimpleImputer()
-imputed_local_agg = my_imputer.fit_transform(local_agg)
-# imputed_local_temp = my_imputer.fit_transform(local_temp)
+local_si = SimpleImputer().fit_transform(local_agg_full_sorted)
 
 
+# Plot with missing data
+local_agg_full_sorted.plot()
+
+# Method 1 - Direct Interpolation
+local_ip = local_agg_full_sorted.interpolate()
+local_ip.plot()
 
 
-local_2013 = local_agg_sorted.loc['2013-01-01':'2013-12-31']
-a = local_2013.asfreq(freq='1D')
+a = local_agg_full_sorted.copy()
 
-a.plot()
-imputed_local_2013 = local_2013.interpolate()
-imputed_local_2013.plot()
+# b = a.interpolate(method='barycentric') ## NO
+# b.plot()
 
-b = a.interpolate(method='barycentric') ## NO
-
-c = a.interpolate(method='quadratic') ## NO
-c.plot()
+# c = a.interpolate(method='quadratic') ## NO
+# c.plot()
 
 d = a.interpolate(method='pchip') ## cumulative distribution 
 d.plot()
@@ -165,11 +159,15 @@ d.plot()
 e = a.interpolate(method='akima') ##  smooth plotting
 e.plot()
 
-f = a.interpolate(method='spline', order=4) ## no
-f.plot()
+# f = a.interpolate(method='spline', order=2) ## no
+# f.plot()
 
-g = a.interpolate(method='polynomial', order=2) ##  no
-g.plot()
+# g = a.interpolate(method='polynomial', order=2) ##  no
+# g.plot()
+
+
+
+
 
 # =============================================================================
 # Try Some TIme Series
