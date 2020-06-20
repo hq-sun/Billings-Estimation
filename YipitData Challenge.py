@@ -106,11 +106,12 @@ local['Start Date'] = pd.to_datetime(local['Start Date'])
 local_agg = local.groupby(['Start Date'], as_index=True).agg({'Units Sold':'sum','Billings':'sum','Inventory_FP':'sum','Inventory_TP':'sum'})
 
 
-
 goods['Start Date'] = goods['Start Date'].astype(str)
+goods['Start Date'] = pd.to_datetime(goods['Start Date'])
 goods_agg = goods.groupby(['Start Date'], as_index=True).agg({'Units Sold':'sum','Billings':'sum','Inventory_FP':'sum','Inventory_TP':'sum'})
 
 travel['Start Date'] = travel['Start Date'].astype(str)
+travel['Start Date'] = pd.to_datetime(travel['Start Date'])
 travel_agg = travel.groupby(['Start Date'], as_index=True).agg({'Units Sold':'sum','Billings':'sum','Inventory_FP':'sum','Inventory_TP':'sum'})
 
 
@@ -143,22 +144,28 @@ local_agg_full_sorted.plot()
 # Method 1 - Simple Imputer -- not so good b/c all missing days are imputed as same
 from sklearn.impute import SimpleImputer
 local_si = SimpleImputer().fit_transform(local_agg_full_sorted)
+## 418
 
 # Method 2 - Direct Interpolation
 local_ip = local_agg_full_sorted.interpolate()
 local_ip.plot()
+## 442
 
 # Method 3 - pchip Interpolation
 local_pc = local_agg_full_sorted.interpolate(method='pchip') ## cumulative distribution 
 local_pc.plot()
+## 439
 
 # Method 4 - akima Interpolation - USE THIS ONE FOR NOW
 local_ak = local_agg_full_sorted.interpolate(method='akima') ##  smooth plotting
 local_ak.plot()
+## 436
 
-# Method 5 - MICE - not working
-from fancyimpute import MICE as MICE
-local_mice = MICE().complete(local_agg_full_sorted)
+# Method 5 - MICE OKAY
+local_mice = pd.read_csv(r'./data/clean/local_mice.csv')
+local_mice.set_index('Start.Date', inplace=True)
+local_mice.plot()
+## 417
 
 # Method 6 - kNN -- not so good b/c all missing days are imputed as same
 from sklearn.impute import KNNImputer
@@ -166,15 +173,32 @@ local_knn = KNNImputer(n_neighbors=5).fit_transform(local_agg_full_sorted)
 local_knn = pd.DataFrame(local_knn)
 local_knn.index = list(local_agg_full_sorted.index) 
 local_knn.plot()
+## 418
 
-a = local_agg_full_sorted.copy()
+# =============================================================================
+# Get sum of each segment
+# =============================================================================
+local_ak.sum(axis = 0, skipna = True)/1000000
+# Units Sold       14.432131
+# Billings        436.451398
 
-# MICE
-# import statsmodels.api as sm
-local_mice = pd.read_csv(r'./data/clean/local_mice.csv')
+goods_agg.sum(axis = 0, skipna = True)/1000000
+# Units Sold       10.419746
+# Billings        282.245671
 
-local_mice.set_index('Start.Date', inplace=True)
-local_mice.plot()
+travel_agg.sum(axis = 0, skipna = True)/1000000
+# Units Sold       0.378910
+# Billings        70.552062
+
+
+# =============================================================================
+# LSTM
+# =============================================================================
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import LSTM
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
 
 
 
