@@ -131,7 +131,7 @@ local_agg_full_sorted = local_before_2013.append(local_2013_full) ## 515 obs
 local_agg_full_sorted.to_csv('./data/clean/local_agg_full_sorted.csv')
 local_agg_full_sorted.to_pickle('./data/clean/local_agg_full_sorted.pkl')
 
-local_agg_full_sorted = pd.read_pickle(r'local_agg_full_sorted.pkl')
+local_agg_full_sorted = pd.read_pickle(r'./data/clean/local_agg_full_sorted.pkl')
 
 # =============================================================================
 # Imputation
@@ -169,11 +169,14 @@ local_knn.plot()
 
 a = local_agg_full_sorted.copy()
 
+# MICE
+# import statsmodels.api as sm
+local_mice = pd.read_csv(r'./data/clean/local_mice.csv')
 
-from impyute.imputation.cs import mice
+local_mice.set_index('Start.Date', inplace=True)
+local_mice.plot()
 
-# start the MICE training
-imputed_training=mice(train.values)
+
 
 
 # =============================================================================
