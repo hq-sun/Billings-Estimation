@@ -5,7 +5,6 @@ Created on Sat Jun 13 12:28:04 2020
 
 @author: Heqing Sun
 """
-
 import os
 import pandas as pd
 import numpy as np
@@ -93,18 +92,16 @@ df['Inventory Type'].unique()
 df['Inventory_FP'] = np.where(df['Inventory Type']=='First - Party', 1, 0)
 df['Inventory_TP'] = np.where(df['Inventory Type']=='Third - Party', 1, 0)
 df.drop(['Deal ID', 'Deal URL', 'Inventory Type'], axis = 1, inplace = True) 
-df.columns
 
 # Split the dataset by segments
 local = df[(df.Segment=='Local')]
 goods = df[(df.Segment=='Goods')]
 travel = df[(df.Segment=='Travel')]
 
-# Aggregation
+# Aggregate each segament to Day level
 local['Start Date'] = local['Start Date'].astype(str)
 local['Start Date'] = pd.to_datetime(local['Start Date'])
 local_agg = local.groupby(['Start Date'], as_index=True).agg({'Units Sold':'sum','Billings':'sum','Inventory_FP':'sum','Inventory_TP':'sum'})
-
 
 goods['Start Date'] = goods['Start Date'].astype(str)
 goods['Start Date'] = pd.to_datetime(goods['Start Date'])
@@ -114,11 +111,10 @@ travel['Start Date'] = travel['Start Date'].astype(str)
 travel['Start Date'] = pd.to_datetime(travel['Start Date'])
 travel_agg = travel.groupby(['Start Date'], as_index=True).agg({'Units Sold':'sum','Billings':'sum','Inventory_FP':'sum','Inventory_TP':'sum'})
 
-
 # Sort local aggregated dataframe
 local_agg_sorted = local_agg.sort_index()
 
-# Split local dataframe to two - before 2013 and Year 2013
+# Split local dataframe to two parts - before 2013 and Year 2013
 local_2013 = local_agg_sorted.loc['2013-01-01':'2013-12-31'] ## 354 obs (missing 11 days)
 local_before_2013 = local_agg_sorted.loc[:'2012-12-31'] ## 150 obs
 
@@ -137,7 +133,6 @@ local_agg_full_sorted = pd.read_pickle(r'./data/clean/local_agg_full_sorted.pkl'
 # =============================================================================
 # Imputation
 # =============================================================================
-
 # Plot with missing data
 local_agg_full_sorted.plot()
 
@@ -146,34 +141,19 @@ from sklearn.impute import SimpleImputer
 local_si = SimpleImputer().fit_transform(local_agg_full_sorted)
 ## 418
 
-# Method 2 - Direct Interpolation
-local_ip = local_agg_full_sorted.interpolate()
-local_ip.plot()
-## 442
-
-# Method 3 - pchip Interpolation
-local_pc = local_agg_full_sorted.interpolate(method='pchip') ## cumulative distribution 
-local_pc.plot()
-## 439
-
-# Method 4 - akima Interpolation - USE THIS ONE FOR NOW
-local_ak = local_agg_full_sorted.interpolate(method='akima') ##  smooth plotting
-local_ak.plot()
-## 436
-
-# Method 5 - time Interpolation
+# Method 2 - time Interpolation
 # Works on daily and higher resolution data to interpolate given length of interval
 local_time = local_agg_full_sorted.interpolate(method='time')
 local_time.plot()
+## 442
 
-
-# Method 6 - MICE OKAY
+# Method 3 - MICE OKAY
 local_mice = pd.read_csv(r'./data/clean/local_mice.csv')
 local_mice.set_index('Start.Date', inplace=True)
 local_mice.plot()
 ## 417
 
-# Method 7 - kNN -- not so good b/c all missing days are imputed as same
+# Method 4 - kNN -- not so good b/c all missing days are imputed as same
 from sklearn.impute import KNNImputer
 local_knn = KNNImputer(n_neighbors=5).fit_transform(local_agg_full_sorted)
 local_knn = pd.DataFrame(local_knn)
@@ -182,12 +162,30 @@ local_knn.plot()
 ## 418
 
 # =============================================================================
+# Time Series Validation
+# =============================================================================
+# Focus on Sept to Dec because 2012, 2013 both have full data entries in this date range
+local_2013_9_12 = local_time.loc['2013-09-01':'2013-12-31'] 
+local_2012_9_12 = local_time.loc['2012-09-01':'2012-12-31'] 
+
+from statsmodels.tsa.seasonal import seasonal_decompose
+# Additive Decomposition for 2012
+result_add_2012 = seasonal_decompose(local_2012_9_12['Billings'], model='additive', extrapolate_trend='freq')
+# Plot
+plt.rcParams.update({'figure.figsize': (10,10)})
+result_add_2012.plot().suptitle('Additive Decompose for 2012', fontsize=12, x=0.2)
+plt.show()
+
+# Additive Decomposition for 2013
+result_add_2013 = seasonal_decompose(local_2013_9_12['Billings'], model='additive', extrapolate_trend='freq')
+# Plot
+plt.rcParams.update({'figure.figsize': (10,10)})
+result_add_2013.plot().suptitle('Additive Decompose for 2013', fontsize=12, x=0.2)
+plt.show()
+
+# =============================================================================
 # Get sum of each segment
 # =============================================================================
-local_ak.sum(axis = 0, skipna = True)/1000000
-# Units Sold       14.432131
-# Billings        436.451398
-
 local_time.sum(axis = 0, skipna = True)/1000000
 # Units Sold       14.992623
 # Billings        442.018623
@@ -199,47 +197,4 @@ goods_agg.sum(axis = 0, skipna = True)/1000000
 travel_agg.sum(axis = 0, skipna = True)/1000000
 # Units Sold       0.378910
 # Billings        70.552062
-
-
-# =============================================================================
-# Time Series
-# =============================================================================
-# Split local dataframe to two - Yeear 2012 and Year 2013 (omit one obs in 2011)
-local_2013_full = local_agg_full_sorted.loc['2013-01-01':'2013-12-31'] ## 365 obs
-local_2012 = local_agg_full_sorted.loc['2012-01-01':'2012-12-31'] ## 149 obs (after Sep 1, no missing)
-# local_2013_full.plot()
-# local_2012.plot()
-
-local_2013_9_12 = local_agg_full_sorted.loc['2013-09-01':'2013-12-31'] 
-local_2012_9_12 = local_agg_full_sorted.loc['2012-09-01':'2012-12-31'] 
-# local_2013_9_12.plot()
-# local_2012_9_12.plot()
-
-from statsmodels.tsa.seasonal import seasonal_decompose
-# Multiplicative Decomposition 
-# result_mul = seasonal_decompose(local_2012_9_12['Billings'], model='multiplicative', extrapolate_trend='freq')
-## ValueError: Multiplicative seasonality is not appropriate for zero and negative values
-
-# Additive Decomposition
-result_add_2012 = seasonal_decompose(local_2012_9_12['Billings'], model='additive', extrapolate_trend='freq')
-
-# Plot
-plt.rcParams.update({'figure.figsize': (10,10)})
-# result_mul.plot().suptitle('Multiplicative Decompose', fontsize=22)
-result_add_2012.plot().suptitle('Additive Decompose for 2012', fontsize=12, x=0.2)
-plt.show()
-
-
-test = local_time.loc['2013-09-01':'2013-12-31'] 
-# Additive Decomposition
-a = seasonal_decompose(test['Billings'], model='additive', extrapolate_trend='freq')
-# Multiplicative Decomposition 
-result_mul = seasonal_decompose(test['Billings'], model='multiplicative', extrapolate_trend='freq')
-
-
-# Plot
-plt.rcParams.update({'figure.figsize': (10,10)})
-result_mul.plot().suptitle('Multiplicative Decompose for 2013', fontsize=12, x=0.2)
-# a.plot().suptitle('Additive Decompose for 2013', fontsize=12, x=0.2)
-plt.show()
 
