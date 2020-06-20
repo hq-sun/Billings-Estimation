@@ -127,46 +127,53 @@ local_2013_full = local_2013.asfreq(freq='1D')
 # Join two dataframes vertically
 local_agg_full_sorted = local_before_2013.append(local_2013_full) ## 515 obs
 
+# Write dataframe to csv and pickle file
+local_agg_full_sorted.to_csv('./data/clean/local_agg_full_sorted.csv')
+local_agg_full_sorted.to_pickle('./data/clean/local_agg_full_sorted.pkl')
+
+local_agg_full_sorted = pd.read_pickle(r'local_agg_full_sorted.pkl')
 
 # =============================================================================
 # Imputation
 # =============================================================================
 
-# Simple Imputer -- not so good b/c all missing days are imputed as same
-from sklearn.impute import SimpleImputer
-local_si = SimpleImputer().fit_transform(local_agg_full_sorted)
-
-
 # Plot with missing data
 local_agg_full_sorted.plot()
 
-# Method 1 - Direct Interpolation
+# Method 1 - Simple Imputer -- not so good b/c all missing days are imputed as same
+from sklearn.impute import SimpleImputer
+local_si = SimpleImputer().fit_transform(local_agg_full_sorted)
+
+# Method 2 - Direct Interpolation
 local_ip = local_agg_full_sorted.interpolate()
 local_ip.plot()
 
+# Method 3 - pchip Interpolation
+local_pc = local_agg_full_sorted.interpolate(method='pchip') ## cumulative distribution 
+local_pc.plot()
+
+# Method 4 - akima Interpolation - USE THIS ONE FOR NOW
+local_ak = local_agg_full_sorted.interpolate(method='akima') ##  smooth plotting
+local_ak.plot()
+
+# Method 5 - MICE - not working
+from fancyimpute import MICE as MICE
+local_mice = MICE().complete(local_agg_full_sorted)
+
+# Method 6 - kNN -- not so good b/c all missing days are imputed as same
+from sklearn.impute import KNNImputer
+local_knn = KNNImputer(n_neighbors=5).fit_transform(local_agg_full_sorted)
+local_knn = pd.DataFrame(local_knn)
+local_knn.index = list(local_agg_full_sorted.index) 
+local_knn.plot()
 
 a = local_agg_full_sorted.copy()
 
-# b = a.interpolate(method='barycentric') ## NO
-# b.plot()
 
-# c = a.interpolate(method='quadratic') ## NO
-# c.plot()
+from impyute.imputation.cs import mice
 
-d = a.interpolate(method='pchip') ## cumulative distribution 
-d.plot()
-
-e = a.interpolate(method='akima') ##  smooth plotting
-e.plot()
-
-# f = a.interpolate(method='spline', order=2) ## no
-# f.plot()
-
-# g = a.interpolate(method='polynomial', order=2) ##  no
-# g.plot()
-
-
-
+# start the MICE training
+imputed_training=mice(train.values)
 
 
 # =============================================================================
