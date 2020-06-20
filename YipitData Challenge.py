@@ -18,13 +18,12 @@ os.getcwd()
 df = pd.read_excel (r'./data/raw/Q4_2013_Groupon_North_America_Data_XLSX (1).xlsx', sheet_name='Q4 2013 Raw Data')
 df_backup = df.copy()
 ## 138534 obs, 7 vars
-df.head()
 
 # =============================================================================
 # EDA
 # =============================================================================
 # Define some functions
-# For all varibales
+# For all variables
 def dataframe_description(df, col):
     print('Column Name:', col)
     print('Number of Rows:', len(df.index))
@@ -51,7 +50,7 @@ def plot_distribution(df, col):
     plt.title('Distribution Plot for ' + col)
     plt.show()
     
-# Plotting countplots for categorical vairables 
+# Plotting count plots for categorical variables 
 def plot_counts(df, col):
     sns.set(style='darkgrid')
     ax = sns.countplot(x=col, data=df)
@@ -67,13 +66,12 @@ categorical_vars = ['Start Date', 'Segment', 'Inventory Type']
 for col in list(df.columns.values):
     dataframe_description(df, col)
 ## Each row is a unique Deal ID, no duplicates
-## No mising value in all columns
+## No missing value in all columns
 
 for col in list(continuous_vars):
     descriptive_stats_continuous(df, col)
-## Units Sold varibale: minimum is -9100.0, which is weird
-## Billings variabls: minimu is -218062.90099999993, which is weird
-
+## Units Sold variable: minimum is -9100.0
+## Billings variables: minimum is -218062.90099999993
 for col in list(continuous_vars):
     plot_distribution(df, col)
 
