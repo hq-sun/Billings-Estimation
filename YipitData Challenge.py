@@ -201,33 +201,45 @@ travel_agg.sum(axis = 0, skipna = True)/1000000
 # Billings        70.552062
 
 
-
+# =============================================================================
+# Time Series
+# =============================================================================
 # Split local dataframe to two - Yeear 2012 and Year 2013 (omit one obs in 2011)
 local_2013_full = local_agg_full_sorted.loc['2013-01-01':'2013-12-31'] ## 365 obs
 local_2012 = local_agg_full_sorted.loc['2012-01-01':'2012-12-31'] ## 149 obs (after Sep 1, no missing)
-local_2013_full.plot()
-local_2012.plot()
+# local_2013_full.plot()
+# local_2012.plot()
 
 local_2013_9_12 = local_agg_full_sorted.loc['2013-09-01':'2013-12-31'] 
 local_2012_9_12 = local_agg_full_sorted.loc['2012-09-01':'2012-12-31'] 
-local_2013_9_12.plot()
-local_2012_9_12.plot()
+# local_2013_9_12.plot()
+# local_2012_9_12.plot()
+
+from statsmodels.tsa.seasonal import seasonal_decompose
+# Multiplicative Decomposition 
+# result_mul = seasonal_decompose(local_2012_9_12['Billings'], model='multiplicative', extrapolate_trend='freq')
+## ValueError: Multiplicative seasonality is not appropriate for zero and negative values
+
+# Additive Decomposition
+result_add_2012 = seasonal_decompose(local_2012_9_12['Billings'], model='additive', extrapolate_trend='freq')
+
+# Plot
+plt.rcParams.update({'figure.figsize': (10,10)})
+# result_mul.plot().suptitle('Multiplicative Decompose', fontsize=22)
+result_add_2012.plot().suptitle('Additive Decompose for 2012', fontsize=12, x=0.2)
+plt.show()
 
 
-local_2013_9_12_ts = local_2013_9_12[['Billings']]
-local_2012_9_12_ts = local_2012_9_12[['Billings']]
-
-df1 = local_2013_9_12_ts.copy()
-df2 = local_2012_9_12_ts.copy()
-
-df1.reset_index(drop=True, inplace=True)
-df2.reset_index(drop=True, inplace=True)
-
-df = pd.concat( [df1, df2], axis=1) 
-df.columns = ['a', 'b']
-
-df.plot()
+test = local_time.loc['2013-09-01':'2013-12-31'] 
+# Additive Decomposition
+a = seasonal_decompose(test['Billings'], model='additive', extrapolate_trend='freq')
+# Multiplicative Decomposition 
+result_mul = seasonal_decompose(test['Billings'], model='multiplicative', extrapolate_trend='freq')
 
 
-
+# Plot
+plt.rcParams.update({'figure.figsize': (10,10)})
+result_mul.plot().suptitle('Multiplicative Decompose for 2013', fontsize=12, x=0.2)
+# a.plot().suptitle('Additive Decompose for 2013', fontsize=12, x=0.2)
+plt.show()
 
