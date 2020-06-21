@@ -78,15 +78,13 @@ for col in list(continuous_vars):
 for col in list(categorical_vars):
     plot_counts(df, col)
 
-# Check if Units Sold is same symbol with Billings
+# Check if Units Sold is same sign with Billings
 df_check = df.copy()
 df_check['Units Sold x Billings'] = df_check['Units Sold'] * df_check['Billings']
 df_check[df_check['Units Sold x Billings'] < 0]
 ## All rows Units Sold and Billings variables have the same sign
 
 # Create indicator variable for 'First - Party' inventory
-# df = df_backup.copy()
-df['Inventory Type'].unique()
 df['Inventory_FP'] = np.where(df['Inventory Type']=='First - Party', 1, 0)
 df['Inventory_TP'] = np.where(df['Inventory Type']=='Third - Party', 1, 0)
 df.drop(['Deal ID', 'Deal URL', 'Inventory Type'], axis = 1, inplace = True) 
@@ -129,42 +127,16 @@ local_agg_full_sorted.to_pickle('./data/clean/local_agg_full_sorted.pkl')
 local_agg_full_sorted = pd.read_pickle(r'./data/clean/local_agg_full_sorted.pkl')
 
 # =============================================================================
-# Imputation
-# =============================================================================
-# Plot with missing data
-local_agg_full_sorted.plot()
-
-# Method 1 - Simple Imputer -- not so good b/c all missing days are imputed as same
-from sklearn.impute import SimpleImputer
-local_si = SimpleImputer().fit_transform(local_agg_full_sorted)
-## 418
-
-# Method 2 - time Interpolation
-# Works on daily and higher resolution data to interpolate given length of interval
-local_time = local_agg_full_sorted.interpolate(method='time')
-local_time.plot()
-## 442
-
-# Method 3 - MICE OKAY
-local_mice = pd.read_csv(r'./data/clean/local_mice.csv')
-local_mice.set_index('Start.Date', inplace=True)
-local_mice.plot()
-## 417
-
-# Method 4 - kNN -- not so good b/c all missing days are imputed as same
-from sklearn.impute import KNNImputer
-local_knn = KNNImputer(n_neighbors=5).fit_transform(local_agg_full_sorted)
-local_knn = pd.DataFrame(local_knn)
-local_knn.index = list(local_agg_full_sorted.index) 
-local_knn.plot()
-## 418
-
-# =============================================================================
-# Time Series Validation
+# Time Series Decomposition
 # =============================================================================
 # Focus on Sept to Dec because 2012, 2013 both have full data entries in this date range
-local_2013_9_12 = local_time.loc['2013-09-01':'2013-12-31'] 
-local_2012_9_12 = local_time.loc['2012-09-01':'2012-12-31'] 
+local_2013_9_12 = local_agg_full_sorted.loc['2013-09-01':'2013-12-31'] # has 11 rows with missing values
+local_2012_9_12 = local_agg_full_sorted.loc['2012-09-01':'2012-12-31'] 
+
+# Plot two years's Spet to Dec
+local_2013_9_12.plot()
+local_2012_9_12.plot()
+## have similar patterns
 
 from statsmodels.tsa.seasonal import seasonal_decompose
 # Additive Decomposition for 2012
@@ -174,17 +146,55 @@ plt.rcParams.update({'figure.figsize': (10,10)})
 result_add_2012.plot().suptitle('Additive Decompose for 2012', fontsize=12, x=0.2)
 plt.show()
 
-# Additive Decomposition for 2013
-result_add_2013 = seasonal_decompose(local_2013_9_12['Billings'], model='additive', extrapolate_trend='freq')
+# =============================================================================
+# Imputation and Validation
+# =============================================================================
+# Plot with missing data
+local_2013_9_12.plot()
+
+# Method 1 - Simple Imputer -- not so good b/c all missing days are imputed as same
+from sklearn.impute import SimpleImputer
+local_si = SimpleImputer().fit_transform(local_2013_9_12)
+## 418
+
+# Method 2 - time Interpolation
+# Works on daily and higher resolution data to interpolate given length of interval
+local_time = local_2013_9_12.interpolate(method='time')
+local_time.plot()
+## 442
+
+# Method 3 - MICE
+# Export dataframe to csv for R
+local_2013_9_12.to_csv('./data/clean/local_2013_9_12.csv')
+# Import R's MICE imputation result
+local_mice = pd.read_csv(r'./data/clean/local_mice.csv')
+local_mice.set_index('Start.Date', inplace=True)
+local_mice.plot()
+## 417
+
+# Method 4 - kNN -- not so good b/c all missing days are imputed as same
+from sklearn.impute import KNNImputer
+local_knn = KNNImputer(n_neighbors=5).fit_transform(local_2013_9_12)
+local_knn = pd.DataFrame(local_knn)
+local_knn.index = list(local_2013_9_12.index) 
+local_knn.plot()
+## 418
+
+# Additive Decomposition for 2013 after imputation
+result_add_2013 = seasonal_decompose(local_time['Billings'], model='additive', extrapolate_trend='freq')
 # Plot
 plt.rcParams.update({'figure.figsize': (10,10)})
 result_add_2013.plot().suptitle('Additive Decompose for 2013', fontsize=12, x=0.2)
 plt.show()
 
+# Combined with the dataset that before 2013 Sept
+local_before_2013_9 = local_agg_full_sorted.loc[:'2013-08-31']
+local_all_time = local_before_2013_9.append(local_time)
+
 # =============================================================================
 # Get sum of each segment
 # =============================================================================
-local_time.sum(axis = 0, skipna = True)/1000000
+local_all_time.sum(axis = 0, skipna = True)/1000000
 # Units Sold       14.992623
 # Billings        442.018623
 
@@ -196,3 +206,33 @@ travel_agg.sum(axis = 0, skipna = True)/1000000
 # Units Sold       0.378910
 # Billings        70.552062
 
+# =============================================================================
+# Get New Deal Started Counts in Q4 2013
+# =============================================================================
+travel_q4 = travel[travel['Start Date'] > '2013-09-30']
+## 2177 new deals added in Q4 2013 
+
+goods_q4 = goods[goods['Start Date'] > '2013-09-30']
+## 12749 new deals added in Q4 2013 
+
+# Deal with Local segment with missing data - roll up using count
+local_agg_counts = local.groupby(['Start Date'], as_index=True).count()
+
+# Partition data after 2012-9-1 b/c no missing value after this date
+local_agg_counts_after_20120901 = local_agg_counts.loc['2012-09-01':]
+
+# Add 11 days missing data in 2013-10-20 to 2103-10-30
+temp = local_agg_counts_after_20120901.asfreq(freq='1D')
+
+# Remove redudant columns and rename the column
+local_counts = temp[['Units Sold']]
+local_counts.columns = ['Counts']
+local_counts.plot()
+
+# Impute counts with the interpolation method used above
+local_counts_imputed = local_counts.interpolate(method='time')
+local_counts_imputed.plot()
+
+local_q4_counts = local_counts_imputed.loc['2013-10-01':]
+local_q4_counts.sum()
+## 53954 new deals added in Q4 2013 (estimated)
