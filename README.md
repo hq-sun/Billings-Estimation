@@ -1,2 +1,2 @@
 # YipitData-Challenge
- YipitData Groupon Data Challenge Problem
+ For YipitData Groupon Data Challenge Problem
