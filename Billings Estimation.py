@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 os.getcwd()
 
 # Read Excel data
-df = pd.read_excel (r'./data/raw/Q4_2013_Groupon_North_America_Data_XLSX (1).xlsx', sheet_name='Q4 2013 Raw Data')
+df = pd.read_excel(r'./data/raw/Q4_2013_Groupon_North_America_Data_XLSX (1).xlsx', sheet_name='Q4 2013 Raw Data')
 df_backup = df.copy()
 ## 138534 obs, 7 vars
 
